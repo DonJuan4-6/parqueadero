@@ -29,7 +29,7 @@ async def hora_ingreso_vehiculo(datos: Vehiculos):
     vehiculo_ingresado = await get_vehiculo_placa(datos.placa)
     if vehiculo_ingresado:
         raise HTTPException(
-            status_code=409,
+            status_code=400,
             detail=f'El vehículo con placa {datos.placa} ya se encuentra en el parqueadero',
         )
 
@@ -48,7 +48,7 @@ async def actualizar_vehiculo_por_placa(placa: str, datos: UpdateVehiculos):
         vehiculo_existente = await get_vehiculo_placa(cambios['placa'])
         if vehiculo_existente:
             raise HTTPException(
-                status_code=409,
+                status_code=400,
                 detail=f'El vehículo con placa {cambios["placa"]} ya se encuentra en el parqueadero',
             )
 

@@ -2,7 +2,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import re
 
-cliente = AsyncIOMotorClient(os.getenv("MONGODB_URL", "mongodb://localhost:27017"))
+cliente = AsyncIOMotorClient(
+    os.getenv("MONGODB_URL", "mongodb://localhost:27017"),
+    serverSelectionTimeoutMS=5000,
+)
 database = cliente[os.getenv("MONGODB_DATABASE", "parqueaderodatabase")]
 coleccion = database[os.getenv("MONGODB_COLLECTION", "parqueadero")]
 

@@ -39,7 +39,7 @@ npm install
 npm run dev
 ```
 
-Abre `http://localhost:5173`. El frontend consume `http://localhost:8000/api/parqueadero`; para cambiar esa dirección, copia `frontend/.env.example` a `frontend/.env` y ajusta `VITE_API_URL`.
+Abre `http://localhost:5173`. El frontend consume `http://127.0.0.1:8000/api/parqueadero`; para cambiar esa dirección, copia `frontend/.env.example` a `frontend/.env` y ajusta `VITE_API_URL`.
 
 ## Endpoints
 
@@ -52,3 +52,17 @@ Abre `http://localhost:5173`. El frontend consume `http://localhost:8000/api/par
 | `DELETE` | `/api/parqueadero/{placa}` | Registra la salida y retira el vehículo de la lista |
 
 Los datos de un ingreso usan los campos `placa`, `tipo_vehiculo`, `hora_ingreso`, `pago_realizado` y `salida`. Las placas se almacenan en mayúscula y no se admiten duplicados entre los vehículos que están actualmente en el parqueadero.
+
+Para registrar un vehículo en Thunder Client, selecciona el método `POST`, utiliza la URL `http://127.0.0.1:8000/api/parqueadero` (sin agregar la placa a la ruta) y envía un cuerpo JSON:
+
+```json
+{
+  "placa": "KMD-445",
+  "tipo_vehiculo": "Carro",
+  "hora_ingreso": "2026-10-22T11:20:00",
+  "pago_realizado": true,
+  "salida": "El vehículo puede salir"
+}
+```
+
+Si esa placa ya está registrada dentro del parqueadero, la API responde `400 Bad Request`. La ruta `/api/parqueadero/{placa}` se utiliza para consultar (`GET`), actualizar (`PUT`) o registrar la salida (`DELETE`); no para crear (`POST`) un ingreso.

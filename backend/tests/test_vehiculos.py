@@ -66,7 +66,7 @@ class VehiculosRoutesTest(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(HTTPException) as error:
                 await rutas.hora_ingreso_vehiculo(datos)
 
-        self.assertEqual(error.exception.status_code, 409)
+        self.assertEqual(error.exception.status_code, 400)
 
     async def test_actualiza_solo_los_campos_enviados(self):
         cambio = UpdateVehiculos(tipo_vehiculo="Moto")
