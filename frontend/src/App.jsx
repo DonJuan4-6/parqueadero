@@ -16,10 +16,6 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <footer className="site-footer">
-        <span>GetParking</span>
-        <span>Control sencillo para cada espacio.</span>
-      </footer>
     </div>
   );
 }

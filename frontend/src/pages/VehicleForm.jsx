@@ -5,6 +5,7 @@ import {
   crearVehiculo,
   getVehiculo,
   mensajeError,
+  registrarSalida,
 } from "../api/vehiculos.js";
 
 const fechaLocal = () => {
@@ -37,6 +38,7 @@ export default function VehicleForm() {
   const [formulario, setFormulario] = useState(formularioInicial);
   const [cargando, setCargando] = useState(esEdicion);
   const [guardando, setGuardando] = useState(false);
+  const [registrandoSalida, setRegistrandoSalida] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -103,6 +105,26 @@ export default function VehicleForm() {
     }
   }
 
+  async function handleSalida() {
+    const confirmacion = window.confirm(
+      `¿Confirmas la salida del vehículo ${formulario.placa}? El registro se retirará del parqueadero.`,
+    );
+    if (!confirmacion) return;
+
+    setError("");
+    setRegistrandoSalida(true);
+    try {
+      await registrarSalida(formulario.placa);
+      navigate("/", {
+        state: { mensaje: `Se registró la salida de ${formulario.placa}.` },
+      });
+    } catch (requestError) {
+      setError(mensajeError(requestError));
+    } finally {
+      setRegistrandoSalida(false);
+    }
+  }
+
   if (cargando) {
     return <div className="form-loading"><span className="loading-indicator" />Cargando el registro…</div>;
   }
@@ -111,8 +133,13 @@ export default function VehicleForm() {
     return (
       <section className="form-page">
         <Link className="back-link" to="/">← Volver al parqueadero</Link>
-        <div className="alert alert-error" role="alert">{error}</div>
-        <Link className="button button-secondary" to="/">Volver a la lista</Link>
+        <div className="vehicle-form">
+          <div className="form-heading">
+            <h1>No se pudo cargar el vehículo</h1>
+          </div>
+          <div className="alert alert-error" role="alert">{error}</div>
+          <Link className="button button-secondary" to="/">Volver a la lista</Link>
+        </div>
       </section>
     );
   }
@@ -120,103 +147,104 @@ export default function VehicleForm() {
   return (
     <section className="form-page">
       <Link className="back-link" to="/">← Volver al parqueadero</Link>
-      <div className="form-heading">
-        <span className="eyebrow">REGISTRO DE VEHÍCULO</span>
-        <h1>{esEdicion ? "Editar ingreso" : "Registrar ingreso"}</h1>
-        <p>
-          {esEdicion
-            ? "Actualiza los datos del vehículo y el estado del pago."
-            : "Ingresa los datos del vehículo que acaba de llegar."}
-        </p>
-      </div>
-
-      {error && <div className="alert alert-error" role="alert">{error}</div>}
-
-      <form className="vehicle-form" onSubmit={handleSubmit}>
-        <div className="form-section-title">
-          <span className="form-section-number">01</span>
-          <div>
-            <h2>Datos del vehículo</h2>
-            <p>La placa identifica este registro en el parqueadero.</p>
+      <div className="form-content">
+        <form className="vehicle-form" onSubmit={handleSubmit}>
+          <div className="form-heading">
+            <h1>{esEdicion ? "Actualizar vehículo" : "Registrar vehículo"}</h1>
+            <p>
+              {esEdicion
+                ? "Actualiza los datos del ingreso y del pago."
+                : "Ingresa los datos del vehículo que acaba de llegar."}
+            </p>
           </div>
-        </div>
 
-        <div className="form-fields">
-          <label className="field">
-            <span>Placa <span className="required-mark">*</span></span>
-            <input
-              name="placa"
-              value={formulario.placa}
-              onChange={handleChange}
-              placeholder="Ej. ABC123"
-              minLength={3}
-              maxLength={10}
-              pattern="[A-Za-z0-9-]+"
-              title="Usa letras, números o guiones."
-              autoComplete="off"
-              required
-              disabled={esEdicion}
-            />
-            <small>Entre 3 y 10 caracteres, sin espacios.</small>
-          </label>
+          {error && <div className="alert alert-error" role="alert">{error}</div>}
 
-          <label className="field">
-            <span>Tipo de vehículo <span className="required-mark">*</span></span>
-            <select
-              name="tipo_vehiculo"
-              value={formulario.tipo_vehiculo}
-              onChange={handleChange}
-              required
-            >
-              {!["Carro", "Moto", "Camioneta", "Otro"].includes(formulario.tipo_vehiculo) && (
-                <option>{formulario.tipo_vehiculo}</option>
-              )}
-              <option>Carro</option>
-              <option>Moto</option>
-              <option>Camioneta</option>
-              <option>Otro</option>
-            </select>
-          </label>
+          <div className="form-fields">
+            <label className="field">
+              <span className="sr-only">Placa</span>
+              <input
+                name="placa"
+                value={formulario.placa}
+                onChange={handleChange}
+                placeholder="Placa (ej. ABC123)"
+                minLength={3}
+                maxLength={10}
+                pattern="[A-Za-z0-9-]+"
+                title="Usa letras, números o guiones."
+                autoComplete="off"
+                required
+                disabled={esEdicion}
+              />
+            </label>
 
-          <label className="field">
-            <span>Hora de ingreso <span className="required-mark">*</span></span>
-            <input
-              type="datetime-local"
-              name="hora_ingreso"
-              value={formulario.hora_ingreso}
-              onChange={handleChange}
-              required
-            />
-          </label>
-        </div>
+            <label className="field">
+              <span className="sr-only">Tipo de vehículo</span>
+              <select
+                name="tipo_vehiculo"
+                value={formulario.tipo_vehiculo}
+                onChange={handleChange}
+                required
+              >
+                {!["Carro", "Moto", "Camioneta", "Otro"].includes(formulario.tipo_vehiculo) && (
+                  <option>{formulario.tipo_vehiculo}</option>
+                )}
+                <option>Carro</option>
+                <option>Moto</option>
+                <option>Camioneta</option>
+                <option>Otro</option>
+              </select>
+            </label>
 
-        <div className="payment-control">
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              name="pago_realizado"
-              checked={formulario.pago_realizado}
-              onChange={handleChange}
-            />
-            <span className="custom-checkbox" aria-hidden="true" />
-            <span>
-              <strong>Pago realizado</strong>
-              <small>Marca esta opción si el servicio ya fue pagado.</small>
+            <label className="field">
+              <span className="sr-only">Hora de ingreso</span>
+              <input
+                type="datetime-local"
+                name="hora_ingreso"
+                value={formulario.hora_ingreso}
+                onChange={handleChange}
+                required
+              />
+            </label>
+          </div>
+
+          <div className="payment-control">
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                name="pago_realizado"
+                checked={formulario.pago_realizado}
+                onChange={handleChange}
+              />
+              <span className="custom-checkbox" aria-hidden="true" />
+              <span>
+                <strong>Pago realizado</strong>
+              </span>
+            </label>
+            <span className={`status-pill ${formulario.pago_realizado ? "status-paid" : "status-pending"}`}>
+              <span className="status-dot" />
+              {formulario.pago_realizado ? "Al día" : "Pendiente"}
             </span>
-          </label>
-          <span className={`status-pill ${formulario.pago_realizado ? "status-paid" : "status-pending"}`}>
-            <span className="status-dot" />
-            {formulario.pago_realizado ? "Al día" : "Pendiente"}
-          </span>
-        </div>
+          </div>
 
-        <div className="form-actions">
-          <Link className="button button-secondary" to="/">Cancelar</Link>
-          <button className="button button-primary" type="submit" disabled={guardando}>
-            {guardando ? "Guardando…" : esEdicion ? "Guardar cambios" : "Registrar vehículo"}
+          <div className="form-actions">
+            <Link className="button button-secondary" to="/">Cancelar</Link>
+            <button className="button button-primary" type="submit" disabled={guardando}>
+              {guardando ? "Guardando…" : esEdicion ? "Actualizar vehículo" : "Crear ingreso"}
+            </button>
+          </div>
+        </form>
+        {esEdicion && (
+          <button
+            className="button button-exit exit-form-button"
+            type="button"
+            onClick={handleSalida}
+            disabled={registrandoSalida}
+          >
+            {registrandoSalida ? "Registrando salida…" : "Registrar salida"}
           </button>
-        </div>
-      </form>
+        )}
+      </div>
     </section>
   );
 }

@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import VehicleCard from "../components/VehicleCard.jsx";
-import { getVehiculos, mensajeError, registrarSalida } from "../api/vehiculos.js";
+import { useLocation, useNavigate } from "react-router-dom";
+import VehicleList from "../components/VehicleList.jsx";
+import {
+  actualizarVehiculo,
+  getVehiculos,
+  mensajeError,
+  registrarSalida,
+} from "../api/vehiculos.js";
 
 export default function HomePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [vehiculos, setVehiculos] = useState([]);
   const [busqueda, setBusqueda] = useState("");
+  const [soloPendientes, setSoloPendientes] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [placaActualizandoPago, setPlacaActualizandoPago] = useState("");
 
   useEffect(() => {
     if (location.state?.mensaje) {
@@ -37,13 +44,14 @@ export default function HomePage() {
 
   const vehiculosFiltrados = useMemo(() => {
     const query = busqueda.trim().toLocaleLowerCase("es");
-    if (!query) return vehiculos;
-    return vehiculos.filter(
-      ({ placa, tipo_vehiculo }) =>
+    return vehiculos.filter(({ placa, tipo_vehiculo, pago_realizado }) => {
+      const coincideBusqueda =
+        !query ||
         placa.toLocaleLowerCase("es").includes(query) ||
-        tipo_vehiculo.toLocaleLowerCase("es").includes(query),
-    );
-  }, [busqueda, vehiculos]);
+        tipo_vehiculo.toLocaleLowerCase("es").includes(query);
+      return coincideBusqueda && (!soloPendientes || !pago_realizado);
+    });
+  }, [busqueda, soloPendientes, vehiculos]);
 
   async function handleSalida(vehiculo) {
     const confirmacion = window.confirm(
@@ -64,73 +72,49 @@ export default function HomePage() {
     }
   }
 
+  async function handleTogglePago(vehiculo) {
+    setError("");
+    setMensaje("");
+    setPlacaActualizandoPago(vehiculo.placa);
+    try {
+      const actualizado = await actualizarVehiculo(vehiculo.placa, {
+        pago_realizado: !vehiculo.pago_realizado,
+      });
+      setVehiculos((actuales) =>
+        actuales.map((actual) =>
+          actual.placa === actualizado.placa ? actualizado : actual,
+        ),
+      );
+    } catch (requestError) {
+      setError(mensajeError(requestError));
+    } finally {
+      setPlacaActualizandoPago("");
+    }
+  }
+
   const pagosPendientes = vehiculos.filter((vehiculo) => !vehiculo.pago_realizado).length;
 
   return (
     <section className="dashboard">
-      <div className="welcome-panel">
-        <div className="welcome-copy">
-          <span className="eyebrow welcome-eyebrow">PANEL DE CONTROL</span>
-          <h1>Tu parqueadero,<br />siempre en orden.</h1>
-          <p>Administra los vehículos que están dentro y lleva el control de sus pagos.</p>
-        </div>
-        <div className="welcome-art" aria-hidden="true">
-          <div className="art-sun" />
-          <div className="art-building">
-            <span className="building-sign">P</span>
-            <span className="building-window" />
-            <span className="building-window" />
-            <span className="building-window" />
-            <span className="building-window" />
-            <span className="building-door" />
-          </div>
-          <div className="art-car">
-            <span className="car-window" />
-            <span className="car-wheel car-wheel-left" />
-            <span className="car-wheel car-wheel-right" />
-          </div>
-          <div className="art-road" />
-        </div>
-      </div>
-
-      <div className="stats-row">
-        <div className="stat-card">
-          <span className="stat-icon stat-icon-green" aria-hidden="true">P</span>
-          <div>
-            <span className="stat-label">Vehículos dentro</span>
-            <strong>{cargando || error ? "—" : vehiculos.length}</strong>
-          </div>
-        </div>
-        <div className="stat-card">
-          <span className="stat-icon stat-icon-amber" aria-hidden="true">$</span>
-          <div>
-            <span className="stat-label">Pagos pendientes</span>
-            <strong>{cargando || error ? "—" : pagosPendientes}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">OPERACIÓN</span>
-          <h2>Vehículos en el parqueadero</h2>
-          <p>Consulta y actualiza los registros de ingreso.</p>
-        </div>
-        <Link className="button button-primary" to="/vehiculos/nuevo">
-          <span aria-hidden="true">+</span>
-          Nuevo ingreso
-        </Link>
-      </div>
-
       <div className="list-toolbar">
+        <label className="checkbox-field pending-filter">
+          <input
+            type="checkbox"
+            checked={soloPendientes}
+            onChange={(event) => setSoloPendientes(event.target.checked)}
+            aria-label="Mostrar pagos pendientes"
+          />
+          <span className="custom-checkbox" aria-hidden="true" />
+          <span>Pagos pendientes ({cargando || error ? "—" : pagosPendientes})</span>
+        </label>
         <label className="search-box">
           <span className="search-icon" aria-hidden="true">⌕</span>
           <input
             type="search"
             value={busqueda}
             onChange={(event) => setBusqueda(event.target.value)}
-            placeholder="Buscar por placa o tipo de vehículo"
-            aria-label="Buscar por placa o tipo de vehículo"
+            placeholder="Buscar vehículo..."
+            aria-label="Buscar vehículo por placa o tipo"
           />
         </label>
         <span className="vehicle-count">
@@ -138,7 +122,7 @@ export default function HomePage() {
             ? "No disponible"
             : cargando
               ? "Cargando…"
-              : `${vehiculos.length} ${vehiculos.length === 1 ? "vehículo" : "vehículos"}`}
+              : `${vehiculos.length} ${vehiculos.length === 1 ? "vehículo" : "vehículos"} dentro`}
         </span>
       </div>
 
@@ -153,30 +137,26 @@ export default function HomePage() {
       {cargando ? (
         <div className="empty-state">
           <span className="loading-indicator" aria-hidden="true" />
-          <p>Cargando los vehículos del parqueadero…</p>
+          <p>Cargando vehículos…</p>
         </div>
       ) : !error && vehiculos.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-icon" aria-hidden="true">P</span>
-          <h3>El parqueadero está vacío</h3>
-          <p>Registra el primer vehículo para comenzar a llevar el control de ingresos.</p>
-          <Link className="button button-primary" to="/vehiculos/nuevo">Registrar vehículo</Link>
+          <h2>No hay vehículos registrados</h2>
+          <p>Registra el ingreso del primer vehículo al parqueadero.</p>
+          <span className="empty-state-hint">Usa “Registrar vehículo” para comenzar.</span>
         </div>
       ) : !error && vehiculosFiltrados.length === 0 ? (
         <div className="empty-state compact-empty">
-          <h3>No hay coincidencias</h3>
-          <p>Prueba con otra placa o tipo de vehículo.</p>
+          <h2>No se encontraron vehículos</h2>
+          <p>Cambia el texto de búsqueda o revisa los filtros.</p>
         </div>
       ) : !error ? (
-        <div className="vehicle-grid">
-          {vehiculosFiltrados.map((vehiculo) => (
-            <VehicleCard
-              key={vehiculo.id || vehiculo.placa}
-              vehiculo={vehiculo}
-              onSalida={handleSalida}
-            />
-          ))}
-        </div>
+        <VehicleList
+          vehiculos={vehiculosFiltrados}
+          onSalida={handleSalida}
+          onTogglePago={handleTogglePago}
+          placaActualizandoPago={placaActualizandoPago}
+        />
       ) : null}
     </section>
   );
